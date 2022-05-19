@@ -160,12 +160,12 @@ float sim(STATUS status, int numsim)
         }
 
         //どちらが勝っているかに応じて勝利数にカウントする
-        if (status.turn == 0)
+        if (status.turn == myturn)
         {
             //負け
             //cout << "lose";
         }
-        else if (status.turn == 1)
+        else if (status.turn == ~(myturn))
         {
             //勝ち
             //cout << "win";
@@ -186,11 +186,13 @@ float sim(STATUS status, int numsim)
 }
 
 //現在の盤面からモンテカルロ法を行って勝率を求める
-//返り値は各着手の勝率
-vector<float> montecarlo(STATUS status, int numsim)
+//返り値は最も勝率が高い手
+int montecarlo(STATUS status, int numsim)
 {
-    vector<float> winrate;
+    vector<float> winrate(9);
     int nxmvs;
+    int best = 0;
+    float max = 0.0;
     float numwin = 0.0;
     STATUS nows;
 
@@ -225,34 +227,111 @@ vector<float> montecarlo(STATUS status, int numsim)
             numwin = sim(nows, numsim);
 
             //勝率をリストに格納する。
-            winrate.insert(winrate.begin() + i, numwin / float(numsim));
+            winrate[i] = numwin / float(numsim);
         }
     }
 
-    return winrate;
-}
-
-int main()
-{
-    STATUS status;
-    vector<float> winrate(9);
-
-    //初期化
-    status.s1 = 0;
-    status.s2 = 0;
-    status.turn = 0;
-
-    //printstatus(status);
-    
-    //ひとまず10000回シミュレート見てもらう
-    winrate = montecarlo(status, 10000);
     
     cout << "winrate:" << endl;
     printf("%f, ", winrate[0]);
     for (int i = 1; i < winrate.size(); i++)
         printf(", %f", winrate[i]);
-    
     cout << endl;
+    
+
+    //勝率が最も高い手を選択する
+    for (int i = 0; i < winrate.size(); i++)
+    {
+        if (max < winrate[i])
+        {
+            max = winrate[i];
+            best = i;
+        }
+    }
+
+    return best;
+}
+
+int playgame(STATUS status, int first, int second)
+{
+    int winner, best;
+
+    //勝敗がつくまで打ち続ける
+    while (!(finch(status)))
+    {
+        //盤面の更新
+        if (status.turn == 0)
+        {
+            //先手            
+            best = montecarlo(status, first);
+            status.s1 |= (1 << best);
+            status.turn = 1;
+            cout << best << endl;
+            //cout <<bitset<9>(status.s1)<<" ";
+            //cout << bitset<9>(status.s2) << endl;
+        }
+        else
+        {
+            //後手
+            best = montecarlo(status, second);
+            status.s2 |= (1 << best);
+            status.turn = 0;
+            cout << best << endl;
+            //cout <<bitset<9>(status.s1)<<" ";
+            //cout << bitset<9>(status.s2) << endl;
+        }
+    }
+
+    winner = status.turn + 1;
+
+    return winner;
+}
+
+int main()
+{
+    STATUS status, nowstatus;
+    int best, winner[3], sub;
+    
+    //初期化
+    status.s1 = 0;
+    status.s2 = 0;
+    status.turn = 0;
+    winner[0] = winner[1] = winner[2] = 0;
+    nowstatus = status;
+
+    //printstatus(status);
+    
+    //ひとまず10000回シミュレート見てもらう
+    //best = montecarlo(status, 10000);
+    
+    //cout << "best:" << best << endl;
+    
+    //実際に戦わせてみよう
+    //一方はシミュレーション数30、他方はシミュレーション数1000
+    //公平性のため、それぞれが先攻後攻の場合を10回ずつ、計20回プレイしてみる
+    //勝利数をwinnerに格納していく。
+    //0番目は引き分けの数、1番目はシミュ1000回の勝利数、2番目はシミュ30回の勝利数
+    for (int i = 0; i < 10; i++)
+    {
+        status = nowstatus;
+        winner[playgame(status, 30, 1000)]++;
+    }
+    
+    sub = winner[1];
+    winner[1] = winner[2];
+    winner[2] = sub;
+
+    for (int i = 0; i < 10; i++)
+    {
+        status = nowstatus;
+        winner[playgame(status, 1000, 30)]++;
+    }
+
+    cout << "勝敗結果" << endl;
+    cout << "引き分け：" << winner[0] << endl;
+    cout << "シミュ1000回の勝利数：" << winner[1] << endl;
+    cout << "シミュ30回の勝利数：" << winner[2] << endl;
+
 }
 
 
