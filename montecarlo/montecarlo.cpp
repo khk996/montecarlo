@@ -9,16 +9,17 @@
 using namespace std;
 
 typedef struct {
-    int s1;
-    int s2;
+    unsigned int s1;
+    unsigned int s2;
     int turn;
 }STATUS;
 
 //勝利パターン。8通りある。
-const unsigned int WIN_PATTERN[8] =
-{ (1 << 2) | (1 << 5) | (1 << 8), (1 << 1) | (1 << 4) | (1 << 7), (1 << 0) | (1 << 3) | (1 << 6),
-  (1 << 0) | (1 << 1) | (1 << 2), (1 << 3) | (1 << 4) | (1 << 5), (1 << 6) | (1 << 7) | (1 << 8),
-  (1 << 0) | (1 << 4) | (1 << 8), (1 << 2) | (1 << 4) | (1 << 6) };
+const unsigned int WIN_PATTERN[24] =
+{ (1 << 2) , (1 << 5) , (1 << 8), (1 << 1) , (1 << 4) , (1 << 7), (1 << 0) , (1 << 3) , (1 << 6),
+  (1 << 0) , (1 << 1) , (1 << 2), (1 << 3) , (1 << 4) , (1 << 5), (1 << 6) , (1 << 7) , (1 << 8),
+  (1 << 0) , (1 << 4) , (1 << 8), (1 << 2) , (1 << 4) , (1 << 6) };
+
 
 //デバッグ用盤面の出力
 int printstatus(STATUS status)
@@ -61,100 +62,127 @@ int searchmv(STATUS status)
 //引き分けの場合、status.turnを-1にする。
 bool finch(STATUS status)
 {
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 24; i=i+3)
     {
         if (status.turn == 0)
         {
-            if (status.s2 & WIN_PATTERN[i])
+            if ((status.s2 & WIN_PATTERN[i]) && (status.s2 & WIN_PATTERN[i+1]) && (status.s2 & WIN_PATTERN[i+2]))
             {
-                cout << "A";
+                //cout << "負け:";
+                //cout << bitset<9>(status.s2) << "：" << i << ":" << bitset<9>(WIN_PATTERN[i]) << ", " << i + 1 << ":" << bitset<9>(WIN_PATTERN[i + 1]) << ", " << i + 2 << ":" << bitset<9>(WIN_PATTERN[i + 2]) << endl;
+                //cout << endl;
                 return true;
             }
         }
-        else
+        else if(status.turn == 1)
         {
-            if (status.s1 & WIN_PATTERN[i])
+            if ((status.s1 & WIN_PATTERN[i]) && (status.s1 & WIN_PATTERN[i+1]) && (status.s1 & WIN_PATTERN[i+2]))
             {
-                //cout << "B";
-                cout << bitset<9>(status.s1) << endl;
+                //cout << "勝ち:";
+                //cout << bitset<9>(status.s1) << "：" << i << ":" << bitset<9>(WIN_PATTERN[i]) << ", " << i + 1 << ":" << bitset<9>(WIN_PATTERN[i + 1]) << ", " << i + 2 << ":" << bitset<9>(WIN_PATTERN[i + 2]) << endl;
+                //cout << endl;
                 return true;
             }
         }
     }
 
-    if ((status.s1 | status.s2) != 512)
-    {
-        //終了条件を満たさない
-        cout << "C";
-        return false;
-    }
-    else
+    if ((status.s1 | status.s2) == 0b111111111)
     {
         //引き分け
-        cout << "D";
+        //cout << "引き分け" << endl;;
         status.turn = -1;
         return true;
     }
+
+    //終了条件を満たさない
+    //cout << "続行" << endl;
+    return false;
+
 }
 
-int sim(STATUS status, float numwin)
+float sim(STATUS status, int numsim)
 {
     int nxmvs, nx, myturn;
+    float numwin = 0.0;
     vector<int> mv;
+    STATUS startst;
+
+    //初期状態の保存
+    startst = status;
 
     //自分の番の保存。0なら自分は○。1なら自分は×。
     myturn = status.turn;
     //printstatus(status);
 
-    //勝利条件を満たすまで着手し続ける
-    while (!(finch(status)))
+    for (int k = 0; k < numsim; k++)
     {
-        //printstatus(status);
-
-        //盤面の着手可能手を求める
-        nxmvs = searchmv(status);
-
-        for (int i = 0; i < 9; i++)
+        //勝利条件を満たすまで着手し続ける
+        while (!(finch(status)))
         {
-            if (nxmvs & (1 << i))
+            //printstatus(status);
+
+            //盤面の着手可能手を求める
+            nxmvs = searchmv(status);
+
+            for (int i = 0; i < 9; i++)
             {
-                mv.insert(mv.end(), i);
+                if (nxmvs & (1 << i))
+                {
+                    mv.push_back(i);
+                }
             }
+            /*
+            cout << "〇：" << bitset<9>(status.s1) << endl;
+            cout << "×：" << bitset<9>(status.s2) << endl;
+            cout << "着手可能手：" << bitset<9>(nxmvs) << endl;
+            for (int i = 0; i < mv.size(); i++)
+                cout << mv[i] << ", ";
+            cout << endl;
+            */
+
+            //着手可能手からランダムに着手し、盤面を更新する
+            bitset<9>nxmv(nxmvs);
+            nx = mv[rand() % nxmv.count()];
+            //cout << "着手：" << nx << endl;
+
+            if (status.turn == 0)
+            {
+                status.s1 |= (1 << nx);
+                status.turn = 1;
+            }
+            else
+            {
+                status.s2 |= (1 << nx);
+                status.turn = 0;
+            }
+
+            mv.erase(mv.begin(), mv.end());
         }
 
-        //着手可能手からランダムに着手し、盤面を更新する
-        bitset<9>nxmv(nxmvs);
-        nx = mv[rand() % nxmv.count()];
-
+        //どちらが勝っているかに応じて勝利数にカウントする
         if (status.turn == 0)
         {
-            status.s1 |= (1 << nx);
-            status.turn = 1;
+            //負け
+            //cout << "lose";
+        }
+        else if (status.turn == 1)
+        {
+            //勝ち
+            //cout << "win";
+            numwin += 1.0;
         }
         else
         {
-            status.s2 |= (1 << nx);
-            status.turn = 0;
+            //引き分け
+            //cout << "drow";
+            numwin += 0.5;
         }
-    }
 
-    //どちらが勝っているかに応じて勝利数にカウントする
-    if (status.turn == 0)
-    {
-        //負け
+        //初期化
+        status = startst;
     }
-    else if (status.turn == 1)
-    {
-        //勝ち
-        numwin += 1.0;
-    }
-    else
-    {
-        //引き分け
-        numwin += 0.5;
-    }
-
-    return 0;
+    //cout <<"winrate:"<<bitset<9>(status.s1) <<":" << float(numwin) << endl;
+    return numwin;
 }
 
 //現在の盤面からモンテカルロ法を行って勝率を求める
@@ -193,12 +221,8 @@ vector<float> montecarlo(STATUS status, int numsim)
                 nows.turn = 0;
             }
 
-            for (int j = 0; j < numsim; j++)
-            {
-                //プレイアウトを行う
-                sim(nows, numwin);
-
-            }
+            //プレイアウトを行う
+            numwin = sim(nows, numsim);
 
             //勝率をリストに格納する。
             winrate.insert(winrate.begin() + i, numwin / float(numsim));
@@ -218,13 +242,16 @@ int main()
     status.s2 = 0;
     status.turn = 0;
 
-    printstatus(status);
+    //printstatus(status);
+    
     //ひとまず10000回シミュレート見てもらう
     winrate = montecarlo(status, 10000);
+    
     cout << "winrate:" << endl;
-    for (int i = 0; i < winrate.size(); i++)
-        printf("%f, ", winrate[i]);
-    //cout << winrate[i] << ", ";
+    printf("%f, ", winrate[0]);
+    for (int i = 1; i < winrate.size(); i++)
+        printf(", %f", winrate[i]);
+    
     cout << endl;
 }
 
