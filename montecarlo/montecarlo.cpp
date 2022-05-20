@@ -11,7 +11,7 @@ using namespace std;
 typedef struct {
     unsigned int s1;
     unsigned int s2;
-    int turn;
+    int turn, winner;
 }STATUS;
 
 //勝利パターン。8通りある。
@@ -36,7 +36,7 @@ int printstatus(STATUS status)
         }
         else
         {
-            cout << " ";
+            cout << "  ";
         }
         if ((i % 3) == 2)
         {
@@ -60,7 +60,7 @@ int searchmv(STATUS status)
 
 //勝利条件を見たいているかの判定。引き分けの判定も行う。
 //引き分けの場合、status.turnを-1にする。
-bool finch(STATUS status)
+int finch(STATUS status)
 {
     for (int i = 0; i < 24; i=i+3)
     {
@@ -68,20 +68,20 @@ bool finch(STATUS status)
         {
             if ((status.s2 & WIN_PATTERN[i]) && (status.s2 & WIN_PATTERN[i+1]) && (status.s2 & WIN_PATTERN[i+2]))
             {
-                //cout << "負け:";
+                //cout << "後攻の勝ち:";
                 //cout << bitset<9>(status.s2) << "：" << i << ":" << bitset<9>(WIN_PATTERN[i]) << ", " << i + 1 << ":" << bitset<9>(WIN_PATTERN[i + 1]) << ", " << i + 2 << ":" << bitset<9>(WIN_PATTERN[i + 2]) << endl;
                 //cout << endl;
-                return true;
+                return 2;
             }
         }
         else if(status.turn == 1)
         {
             if ((status.s1 & WIN_PATTERN[i]) && (status.s1 & WIN_PATTERN[i+1]) && (status.s1 & WIN_PATTERN[i+2]))
             {
-                //cout << "勝ち:";
+                //cout << "先攻の勝ち:";
                 //cout << bitset<9>(status.s1) << "：" << i << ":" << bitset<9>(WIN_PATTERN[i]) << ", " << i + 1 << ":" << bitset<9>(WIN_PATTERN[i + 1]) << ", " << i + 2 << ":" << bitset<9>(WIN_PATTERN[i + 2]) << endl;
                 //cout << endl;
-                return true;
+                return 1;
             }
         }
     }
@@ -91,12 +91,55 @@ bool finch(STATUS status)
         //引き分け
         //cout << "引き分け" << endl;;
         status.turn = -1;
-        return true;
+        return 3;
     }
 
     //終了条件を満たさない
     //cout << "続行" << endl;
-    return false;
+    return 0;
+
+}
+
+int finch2(STATUS status)
+{
+    for (int i = 0; i < 24; i = i + 3)
+    {
+        if (status.turn == 0)
+        {
+            if ((status.s2 & WIN_PATTERN[i]) && (status.s2 & WIN_PATTERN[i + 1]) && (status.s2 & WIN_PATTERN[i + 2]))
+            {
+                //cout << "後攻の勝ち:";
+                //cout << bitset<9>(status.s2) << "：" << i << ":" << bitset<9>(WIN_PATTERN[i]) << ", " << i + 1 << ":" << bitset<9>(WIN_PATTERN[i + 1]) << ", " << i + 2 << ":" << bitset<9>(WIN_PATTERN[i + 2]) << endl;
+                //cout << endl;
+                //status.winner = 0;
+                return 2;
+            }
+        }
+        else if (status.turn == 1)
+        {
+            if ((status.s1 & WIN_PATTERN[i]) && (status.s1 & WIN_PATTERN[i + 1]) && (status.s1 & WIN_PATTERN[i + 2]))
+            {
+                //cout << "先攻の勝ち:";
+                //cout << bitset<9>(status.s1) << "：" << i << ":" << bitset<9>(WIN_PATTERN[i]) << ", " << i + 1 << ":" << bitset<9>(WIN_PATTERN[i + 1]) << ", " << i + 2 << ":" << bitset<9>(WIN_PATTERN[i + 2]) << endl;
+                //cout << endl;
+                //status.winner = 1;
+                return 1;
+            }
+        }
+    }
+
+    if ((status.s1 | status.s2) == 0b111111111)
+    {
+        //引き分け
+        //cout << "引き分け" << endl;;
+        //status.turn = -1;
+        status.winner = 2;
+        return 3;
+    }
+
+    //終了条件を満たさない
+    //cout << "続行" << endl;
+    return 0;
 
 }
 
@@ -111,13 +154,17 @@ float sim(STATUS status, int numsim)
     startst = status;
 
     //自分の番の保存。0なら自分は○。1なら自分は×。
-    myturn = status.turn;
+    if (status.turn == 0)
+        myturn = 1;
+    else if (status.turn == 1)
+        myturn = 0;
+
     //printstatus(status);
 
     for (int k = 0; k < numsim; k++)
     {
         //勝利条件を満たすまで着手し続ける
-        while (!(finch(status)))
+        while (finch2(status) == 0)
         {
             //printstatus(status);
 
@@ -160,18 +207,19 @@ float sim(STATUS status, int numsim)
         }
 
         //どちらが勝っているかに応じて勝利数にカウントする
-        if (status.turn == myturn)
+        if (finch2(status) == 1)
         {
-            //負け
-            //cout << "lose";
+            //先攻の勝ち
+            if (myturn == 0)
+                numwin += 1.0;
         }
-        else if (status.turn == ~(myturn))
+        else if (finch2(status) == 2)
         {
-            //勝ち
-            //cout << "win";
-            numwin += 1.0;
+            //後攻の勝ち
+            if (myturn == 1)
+                numwin += 1.0;
         }
-        else
+        else if(finch2(status) == 3)
         {
             //引き分け
             //cout << "drow";
@@ -192,13 +240,13 @@ int montecarlo(STATUS status, int numsim)
     vector<float> winrate(9);
     int nxmvs;
     int best = 0;
-    float max = 0.0;
+    float max = -0.5;
     float numwin = 0.0;
     STATUS nows;
 
     //初期化
     for (int i = 0; i < winrate.size(); i++)
-        winrate[i] = 0.0;
+        winrate[i] = -1.0;
 
     //現在の盤面から可能な着手を求める
     nxmvs = searchmv(status);
@@ -228,7 +276,9 @@ int montecarlo(STATUS status, int numsim)
 
             //勝率をリストに格納する。
             winrate[i] = numwin / float(numsim);
+            
         }
+        //cout <<i<<": " << winrate[i] << endl;
     }
 
     
@@ -237,6 +287,7 @@ int montecarlo(STATUS status, int numsim)
     for (int i = 1; i < winrate.size(); i++)
         printf(", %f", winrate[i]);
     cout << endl;
+    
     
 
     //勝率が最も高い手を選択する
@@ -255,34 +306,40 @@ int montecarlo(STATUS status, int numsim)
 int playgame(STATUS status, int first, int second)
 {
     int winner, best;
+    STATUS nowstatus;
+
+    nowstatus = status;
 
     //勝敗がつくまで打ち続ける
-    while (!(finch(status)))
+    while (finch2(status)==0)
     {
         //盤面の更新
         if (status.turn == 0)
         {
             //先手            
-            best = montecarlo(status, first);
+            best = montecarlo(nowstatus, first);
             status.s1 |= (1 << best);
             status.turn = 1;
-            cout << best << endl;
+            //cout << best << endl;
             //cout <<bitset<9>(status.s1)<<" ";
             //cout << bitset<9>(status.s2) << endl;
         }
         else
         {
             //後手
-            best = montecarlo(status, second);
+            best = montecarlo(nowstatus, second);
             status.s2 |= (1 << best);
             status.turn = 0;
-            cout << best << endl;
+            //cout << best << endl;
             //cout <<bitset<9>(status.s1)<<" ";
             //cout << bitset<9>(status.s2) << endl;
         }
+        nowstatus = status;
+        printstatus(status);
     }
 
-    winner = status.turn + 1;
+    cout <<"結果:" << finch2(status) << endl;
+    winner = finch2(status);
 
     return winner;
 }
@@ -295,7 +352,7 @@ int main()
     //初期化
     status.s1 = 0;
     status.s2 = 0;
-    status.turn = 0;
+    status.turn = status.winner = 0;
     winner[0] = winner[1] = winner[2] = 0;
     nowstatus = status;
 
@@ -311,27 +368,32 @@ int main()
     //公平性のため、それぞれが先攻後攻の場合を10回ずつ、計20回プレイしてみる
     //勝利数をwinnerに格納していく。
     //0番目は引き分けの数、1番目はシミュ1000回の勝利数、2番目はシミュ30回の勝利数
+    
     for (int i = 0; i < 10; i++)
     {
         status = nowstatus;
-        winner[playgame(status, 30, 1000)]++;
+        winner[playgame(status, 30, 1000)-1]++;
     }
-    
-    sub = winner[1];
-    winner[1] = winner[2];
-    winner[2] = sub;
+    cout << "勝敗結果" << endl;
+    cout << "引き分け：" << winner[2] << endl;
+    cout << "後攻シミュ1000回の勝利数：" << winner[0] << endl;
+    cout << "先攻シミュ30回の勝利数：" << winner[1] << endl;
+
+    winner[0] = 0;
+    winner[1] = 0;
+    winner[2] = 0;
 
     for (int i = 0; i < 10; i++)
     {
         status = nowstatus;
-        winner[playgame(status, 1000, 30)]++;
+        winner[playgame(status, 1000, 30)-1]++;
     }
 
     cout << "勝敗結果" << endl;
-    cout << "引き分け：" << winner[0] << endl;
-    cout << "シミュ1000回の勝利数：" << winner[1] << endl;
-    cout << "シミュ30回の勝利数：" << winner[2] << endl;
-
+    cout << "引き分け：" << winner[2] << endl;
+    cout << "先攻シミュ1000回の勝利数：" << winner[1] << endl;
+    cout << "後攻シミュ30回の勝利数：" << winner[0] << endl;
+    
 }
 
 
