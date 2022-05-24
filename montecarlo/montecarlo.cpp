@@ -358,6 +358,16 @@ int main()
 
     //printstatus(status);
     
+    /*
+    //一手進めた状態
+    status.s1 |= (1 << 4);
+    status.turn = 1;
+    status.s2 |= (1 << 8);
+    status.turn = 0;
+    status.s1 |= (1 << 5);
+    status.turn = 1;
+    */
+
     //ひとまず10000回シミュレート見てもらう
     //best = montecarlo(status, 10000);
     
@@ -376,8 +386,8 @@ int main()
     }
     cout << "勝敗結果" << endl;
     cout << "引き分け：" << winner[2] << endl;
-    cout << "後攻シミュ1000回の勝利数：" << winner[0] << endl;
-    cout << "先攻シミュ30回の勝利数：" << winner[1] << endl;
+    cout << "後攻シミュ1000回の勝利数：" << winner[1] << endl;
+    cout << "先攻シミュ30回の勝利数：" << winner[0] << endl;
 
     winner[0] = 0;
     winner[1] = 0;
@@ -391,8 +401,8 @@ int main()
 
     cout << "勝敗結果" << endl;
     cout << "引き分け：" << winner[2] << endl;
-    cout << "先攻シミュ1000回の勝利数：" << winner[1] << endl;
-    cout << "後攻シミュ30回の勝利数：" << winner[0] << endl;
+    cout << "先攻シミュ1000回の勝利数：" << winner[0] << endl;
+    cout << "後攻シミュ30回の勝利数：" << winner[1] << endl;
     
 }
 
