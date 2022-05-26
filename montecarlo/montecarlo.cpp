@@ -234,48 +234,73 @@ int montecarlo(STATUS status, int numsim, int mode)
     //初期化
     for (int i = 0; i < winrate.size(); i++)
         winrate[i] = -1.0;
-
-    //現在の盤面から可能な着手を求める
-    nxmvs = searchmv(status);
-
-    //numsimの分シミュレーションを行い、可能な着手の勝率を求める
-    for (int i = 0; i < 9; i++)
-    {
-
-        if (nxmvs & (1 << i))
-        {
-            nows = status;
-
-            //選んだ着手を行い盤面を更新する
-            if (nows.turn == 0)
-            {
-                nows.s1 |= (1 << i);
-                nows.turn = 1;
-            }
-            else
-            {
-                nows.s2 |= (1 << i);
-                nows.turn = 0;
-            }
-
-            //プレイアウトを行う
-            numwin = sim(nows, numsim);
-
-            //勝率をリストに格納する。
-            winrate[i] = numwin / float(numsim);
-            
-        }
-        //cout <<i<<": " << winrate[i] << endl;
-    }
-
     if (mode == 1)
     {
+        //隅、辺、中央の3通りの手の勝率を求める
+        nows = status;
+
+        //隅
+        nows.s1 |= (1 << 0);
+        nows.turn = 1;
+        numwin = sim(nows, numsim);
+        winrate[0] = numwin / float(numsim);
+
+        nows = status;
+
+        //辺
+        nows.s1 |= (1 << 1);
+        nows.turn = 1;
+        numwin = sim(nows, numsim);
+        winrate[1] = numwin / float(numsim);
+
+        nows = status;
+
+        //隅
+        nows.s1 |= (1 << 4);
+        nows.turn = 1;
+        numwin = sim(nows, numsim);
+        winrate[2] = numwin / float(numsim);
+
+        //各手の勝率を表示
         cout << "winrate:" << endl;
-        printf("%f, ", winrate[0]);
-        for (int i = 1; i < winrate.size(); i++)
-            printf(", %f", winrate[i]);
-        cout << endl;
-    }    
+        printf("隅:%f, ", winrate[0]);
+        printf("辺:%f, ", winrate[1]);
+        printf("中央:%f\n", winrate[2]);
+    }
+    else if (mode == 2)
+    {
+        //現在の盤面から可能な着手を求める
+        nxmvs = searchmv(status);
+
+        //numsimの分シミュレーションを行い、可能な着手の勝率を求める
+        for (int i = 0; i < 9; i++)
+        {
+
+            if (nxmvs & (1 << i))
+            {
+                nows = status;
+
+                //選んだ着手を行い盤面を更新する
+                if (nows.turn == 0)
+                {
+                    nows.s1 |= (1 << i);
+                    nows.turn = 1;
+                }
+                else
+                {
+                    nows.s2 |= (1 << i);
+                    nows.turn = 0;
+                }
+
+                //プレイアウトを行う
+                numwin = sim(nows, numsim);
+
+                //勝率をリストに格納する。
+                winrate[i] = numwin / float(numsim);
+
+            }
+        }
+    }
     
     //勝率が最も高い手を選択する
     for (int i = 0; i < winrate.size(); i++)
@@ -328,7 +353,7 @@ int playgame(STATUS status, int first, int second)
 int main()
 {
     STATUS status, nowstatus;
-    int best, winner[3], mode;
+    int best, winner[3], mode, num;
     
     //初期化
     status.s1 = 0;
@@ -352,10 +377,12 @@ int main()
         break;
     case 2:
         //一方はシミュレーション数30、他方はシミュレーション数1000
-        //公平性のため、それぞれが先攻後攻の場合を10回ずつ、計20回プレイしてみる
         //勝利数をwinnerに格納していく。
         //0番目は引き分けの数、1番目はシミュ1000回の勝利数、2番目はシミュ30回の勝利数
-        for (int i = 0; i < 10; i++)
+        cout << "戦闘回数を入力して下さい(入力された数に対して先攻後攻を入れ替えた2セット文行う)" << endl;
+        cout << "->";
+        cin >> num;
+        for (int i = 0; i < num; i++)
         {
             status = nowstatus;
             winner[playgame(status, 30, 1000)]++;
@@ -369,7 +396,7 @@ int main()
         winner[1] = 0;
         winner[2] = 0;
 
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < num; i++)
         {
             status = nowstatus;
             winner[playgame(status, 1000, 30)]++;
@@ -381,6 +408,7 @@ int main()
         cout << "後攻シミュ30回の勝利数：" << winner[1] << endl;
         break;
     case 3:
+        //未実装
         break;
     default:
         break;
