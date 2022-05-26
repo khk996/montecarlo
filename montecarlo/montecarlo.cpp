@@ -59,7 +59,6 @@ int searchmv(STATUS status)
 }
 
 //勝利条件を見たいているかの判定。引き分けの判定も行う。
-//引き分けの場合、status.turnを-1にする。
 int finch(STATUS status)
 {
     for (int i = 0; i < 24; i=i+3)
@@ -85,7 +84,6 @@ int finch(STATUS status)
     if ((status.s1 | status.s2) == 0b111111111)
     {
         //引き分け
-        status.turn = -1;
         return 3;
     }
 
